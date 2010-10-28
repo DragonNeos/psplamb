@@ -249,11 +249,6 @@ int k1 = pspSdkSetK1(0);
 					if (model_upload_y < 4)
 					{
 						model_matrix[model_upload_x][model_upload_y] = fargument;
-						
-						char text[100];
-						sprintf(text,"mat [%d][%d] = %f\n",model_upload_x,model_upload_y,fargument);
-						debuglog(text);
-						
 						model_upload_x++;
 						if(model_upload_x == 3)
 						{
@@ -373,6 +368,573 @@ int k1 = pspSdkSetK1(0);
 					char text[100];
 					sprintf(text,"vert num: %u vert type: %d\n",numberOfVertex,type);
 					debuglog(text);
+					
+					// save all models that are 3d and also can be skinned
+					//if yu want save only static models - no skinning - then uncomment: iweight == 0
+					if(itransform2D == 0 /*&& iweight == 0*/)
+					{
+						//char text[100];
+						//sprintf(text,"vert num: %u vert type: %d\n",numberOfVertex,type);
+						//debuglog(text);
+
+						//pspio
+						char modelFilename[50];
+						sprintf(modelFilename,"ms0:/models/model%d.3d",primitiveCounter);
+					
+						// Open File
+						//SceUID file = 0;
+						SceUID file = sceIoOpen(modelFilename, PSP_O_CREAT | PSP_O_WRONLY, 0777);
+
+						if(file >= 0)
+						{
+							//how many vertex
+							sceIoWrite(file, &numberOfVertex, sizeof(int));
+							//vertex type
+							sceIoWrite(file, &type, sizeof(int));
+							//position type
+							sceIoWrite(file, &iposition, sizeof(int));
+							//transform 2d?
+							sceIoWrite(file, &itransform2D, sizeof(int));
+						}
+						
+						
+					
+						int numbercounter = 0;
+						for(numbercounter = 0;numbercounter < numberOfVertex;numbercounter++)
+						{
+							//get memory addres of each vertex
+							int indexcount = numbercounter;
+							//indexing support
+							if (index_adr != 0 && iindex != 0)
+							{
+								unsigned int addr = index_adr + indexcount * iindex;
+								
+								switch(iindex)
+								{
+									case 1: 
+									{
+										unsigned char uc8 = 0;
+										memcpy(&uc8,(unsigned char *)addr,1);
+										indexcount = (unsigned int)uc8;
+									}
+									break;
+									case 2:
+									{
+										addr = (addr + 1) & ~1;
+										short sh16 = 0;
+										memcpy(&sh16,(unsigned char *)addr,2);
+										indexcount = (unsigned int)sh16;
+									}
+									break;
+									case 4:
+									{
+										addr = (addr + 3) & ~3;
+										unsigned int in32 = 0;
+										memcpy(&in32,(unsigned char *)addr,4);
+										indexcount = in32;
+									}
+									break;
+								}
+							}
+
+							vertex_adr = vertex_adr_base + indexcount * vertexSize;
+							//additional temp address for morphing
+							vertex_adr_temp = vertex_adr;
+
+							//weights
+							if(iweight != 0)
+							{
+								int skinCounter = 0;
+								for (skinCounter = 0;skinCounter < iskinningWeightCount;skinCounter++)
+								{
+									switch(iweight)
+									{
+									case 1:
+										{
+											unsigned char uc8 = 0;
+											memcpy(&uc8,(unsigned char *)vertex_adr,1);
+											boneWeights[skinCounter] = (float)uc8 /127.0f;
+											vertex_adr++;
+											
+											//char text[100];
+											//sprintf(text,"weight: %u %f\n",skinCounter,boneWeights[skinCounter]);
+											//debuglog(text);
+										}
+										break;
+
+									case 2:
+										{
+											vertex_adr = (vertex_adr + 1) & ~1;
+											short s16 = 0;
+											memcpy(&s16,(unsigned char *)vertex_adr,2);
+											boneWeights[skinCounter] = (float)s16 / 32767.0f;
+											vertex_adr+=2;
+
+											///char text[100];
+											//sprintf(text,"weight: %u %f\n",skinCounter,boneWeights[skinCounter]);
+											//debuglog(text);
+										}
+										break;
+
+									case 3:
+										{
+											vertex_adr = (vertex_adr + 3) & ~3;
+											float f32 = 0.0f;
+											memcpy(&f32,(unsigned char *)vertex_adr,4);
+											boneWeights[skinCounter] = f32;
+											vertex_adr+=4;
+
+											//char text[100];
+											//sprintf(text,"weight: %u %f\n",skinCounter,boneWeights[skinCounter]);
+											//debuglog(text);
+										}
+										break;
+
+									}
+								}
+							}
+							//texture
+							if(itexture != 0)
+							{
+								switch(itexture)
+								{
+									case 1:
+									{
+										vertex_adr+=2;
+									}
+									break;
+									case 2:
+									{
+										vertex_adr = (vertex_adr + 1) & ~1;
+										vertex_adr+=4;
+									}
+									break;
+									case 3:
+									{
+										vertex_adr = (vertex_adr + 3) & ~3;
+										vertex_adr+=8;
+									}
+								}
+								
+							}
+							
+							//color
+							if(icolor != 0)
+							{
+								switch(icolor)
+								{
+									case 1:
+									case 2:
+									case 3:
+									{
+										vertex_adr+=1;
+									}
+									break;
+									case 4:
+									case 5:
+									case 6:
+									{
+										vertex_adr = (vertex_adr + 1) & ~1;
+										vertex_adr+=2;
+									}
+									break;
+									case 7:
+									{
+										vertex_adr = (vertex_adr + 3) & ~3;
+										vertex_adr+=4;
+									}
+									break;
+								}
+							}
+							
+							//normal
+							if(inormal != 0)
+							{
+								switch(inormal)
+								{
+									case 1:
+									{
+										vertex_adr+=3;
+									}
+									break;
+									case 2:
+									{
+										vertex_adr = (vertex_adr + 1) & ~1;
+										vertex_adr+=6;
+									}
+									break;
+									case 3:
+									{
+										vertex_adr = (vertex_adr + 3) & ~3;
+										vertex_adr+=12;
+									}
+									break;
+								}
+							}
+														
+							//position
+							if(iposition != 0)
+							{
+								float x = 0.0f;
+								float y = 0.0f;
+								float z = 0.0f;
+								
+								if(imorphingVertexCount > 1)
+								{
+									float mx = 0.0f;
+									float my = 0.0f;
+									float mz = 0.0f;
+									
+									int morphcounter = 0;
+									for(morphcounter = 0;morphcounter < imorphingVertexCount;morphcounter++)
+									{
+										vertex_adr = vertex_adr_temp + (morphcounter * oneSize) + positionOffset;
+										
+										switch(iposition)
+										{
+											case 1:
+											{
+												char c8 = 0;
+												unsigned char uc8 = 0;
+												
+												// X and Y are signed 8 bit, Z is unsigned 8 bit
+												memcpy(&c8,(unsigned char *)vertex_adr,1);
+												x = (float)c8;
+												vertex_adr++;
+												
+												memcpy(&c8,(unsigned char *)vertex_adr,1);
+												y = (float)c8;
+												vertex_adr++;
+												
+												memcpy(&uc8,(unsigned char *)vertex_adr,1);
+												z = (float)uc8;
+												vertex_adr++;
+												
+												if (itransform2D == 0)
+												{
+													x /= 127.0f;
+													y /= 127.0f;
+													z /= 127.0f;
+												}
+												
+												//morph
+												mx+= x * morph_weight[morphcounter];
+												my+= y * morph_weight[morphcounter];
+												mz+= z * morph_weight[morphcounter];
+											}
+											break;
+											
+											case 2:
+											{
+												short s16 = 0;
+												vertex_adr = (vertex_adr + 1) & ~1;
+
+												// X and Y are signed 16 bit, Z is unsigned 16 bit
+												memcpy(&s16,(unsigned char *)vertex_adr,2);
+												x = (float)s16;
+												vertex_adr+=2;
+												
+												memcpy(&s16,(unsigned char *)vertex_adr,2);
+												y = (float)s16;
+												vertex_adr+=2;
+												
+												memcpy(&s16,(unsigned char *)vertex_adr,2);
+												z = (float)s16;
+												vertex_adr+=2;
+												
+												if (itransform2D == 0)
+												{
+													x /= 32767.0f;
+													y /= 32767.0f;
+													z /= 32767.0f;
+												}
+												
+												//morph
+												mx+= x * morph_weight[morphcounter];
+												my+= y * morph_weight[morphcounter];
+												mz+= z * morph_weight[morphcounter];
+											}
+											break;
+											
+											case 3:
+											{
+												vertex_adr = (vertex_adr + 3) & ~3;
+
+												memcpy(&x,(unsigned char *)vertex_adr,4);
+												vertex_adr+=4;
+												memcpy(&y,(unsigned char *)vertex_adr,4);
+												vertex_adr+=4;
+												memcpy(&z,(unsigned char *)vertex_adr,4);
+												vertex_adr+=4;
+												
+												if (itransform2D == 1)
+												{
+													if (z < 0)
+													{
+														// Negative Z are interpreted as 0
+														z = 0;
+													} else
+													{
+														// 2D positions are always integer values: truncate float value
+														z = (int)z;
+													}
+												}
+												
+												//morph
+												mx+= x * morph_weight[morphcounter];
+												my+= y * morph_weight[morphcounter];
+												mz+= z * morph_weight[morphcounter];
+											}
+											break;
+										
+										}
+									
+									}
+									
+									//save this now
+									//matrix translation
+									if(itransform2D == 1)
+									{
+										sceIoWrite(file, &mx, sizeof(float));
+										sceIoWrite(file, &my, sizeof(float));
+										sceIoWrite(file, &mz, sizeof(float));
+									}else
+									{
+										//skinning
+										//temp values
+										if (iweight != 0)
+										{
+											float tx = 0, ty = 0, tz = 0;
+											unsigned int siknwcounter = 0;
+											for (siknwcounter = 0; siknwcounter < iskinningWeightCount; siknwcounter++)
+											{
+												if (boneWeights[siknwcounter] != 0)
+												{
+													tx += (	mx * bone_uploaded_matrix[siknwcounter][0]
+													+ 		my * bone_uploaded_matrix[siknwcounter][3]
+													+ 		mz * bone_uploaded_matrix[siknwcounter][6]
+													+            bone_uploaded_matrix[siknwcounter][9]) * boneWeights[siknwcounter];
+
+													ty += (	mx * bone_uploaded_matrix[siknwcounter][1]
+													+ 		my * bone_uploaded_matrix[siknwcounter][4]
+													+ 		mz * bone_uploaded_matrix[siknwcounter][7]
+													+            bone_uploaded_matrix[siknwcounter][10]) * boneWeights[siknwcounter];
+
+													tz += (	mx * bone_uploaded_matrix[siknwcounter][2]
+													+ 		my * bone_uploaded_matrix[siknwcounter][5]
+													+ 		mz * bone_uploaded_matrix[siknwcounter][8]
+													+            bone_uploaded_matrix[siknwcounter][11]) * boneWeights[siknwcounter];
+												}
+											}
+
+											mx = tx;
+											my = ty;
+											mz = tz;
+										}
+
+										float newX,newY,newZ;
+										newX = mx * model_matrix[0][0] + my * model_matrix[0][1] + mz * model_matrix[0][2] + model_matrix[0][3];
+										newY = mx * model_matrix[1][0] + my * model_matrix[1][1] + mz * model_matrix[1][2] + model_matrix[1][3];
+										newZ = mx * model_matrix[2][0] + my * model_matrix[2][1] + mz * model_matrix[2][2] + model_matrix[2][3];
+										
+
+										sceIoWrite(file, &newX, sizeof(float));
+										sceIoWrite(file, &newY, sizeof(float));
+										sceIoWrite(file, &newZ, sizeof(float));
+									}
+								}
+								else
+								{
+									switch(iposition)
+									{
+										case 1:
+										{
+											char c8 = 0;
+											unsigned char uc8 = 0;
+
+											// X and Y are signed 8 bit, Z is unsigned 8 bit
+											memcpy(&c8,(unsigned char *)vertex_adr,1);
+											x = (float)c8;
+											vertex_adr++;
+
+											memcpy(&c8,(unsigned char *)vertex_adr,1);
+											y = (float)c8;
+											vertex_adr++;
+
+											memcpy(&uc8,(unsigned char *)vertex_adr,1);
+											z = (float)uc8;
+											vertex_adr++;
+
+											if (itransform2D == 0)
+											{
+												x /= 127.0f;
+												y /= 127.0f;
+												z /= 127.0f;
+											}
+										}
+										break;
+
+										case 2:
+										{
+											short s16 = 0;
+											vertex_adr = (vertex_adr + 1) & ~1;
+
+											// X and Y are signed 16 bit, Z is unsigned 16 bit
+											memcpy(&s16,(unsigned char *)vertex_adr,2);
+											x = (float)s16;
+											vertex_adr+=2;
+
+											memcpy(&s16,(unsigned char *)vertex_adr,2);
+											y = (float)s16;
+											vertex_adr+=2;
+
+											memcpy(&s16,(unsigned char *)vertex_adr,2);
+											z = (float)s16;
+											vertex_adr+=2;
+
+											if (itransform2D == 0)
+											{
+												x /= 32767.0f;
+												y /= 32767.0f;
+												z /= 32767.0f;
+											}
+										}
+										break;
+
+										case 3:
+										{
+											vertex_adr = (vertex_adr + 3) & ~3;
+
+											memcpy(&x,(unsigned char *)vertex_adr,4);
+											vertex_adr+=4;
+											memcpy(&y,(unsigned char *)vertex_adr,4);
+											vertex_adr+=4;
+											memcpy(&z,(unsigned char *)vertex_adr,4);
+											vertex_adr+=4;
+
+											if (itransform2D == 1)
+											{
+												if (z < 0)
+												{
+													// Negative Z are interpreted as 0
+													z = 0;
+												} else
+												{
+													// 2D positions are always integer values: truncate float value
+													z = (int)z;
+												}
+											}
+										}
+										break;
+
+									}
+									//save this now
+									//matrix translation
+									if(itransform2D == 1)
+									{
+										sceIoWrite(file, &x, sizeof(float));
+										sceIoWrite(file, &y, sizeof(float));
+										sceIoWrite(file, &z, sizeof(float));
+									}else
+									{
+										//skinning
+										if (iweight != 0)
+										{
+											//temp values
+											float tx = 0, ty = 0, tz = 0;
+											unsigned int siknwcounter = 0;
+											for (siknwcounter = 0; siknwcounter < iskinningWeightCount; siknwcounter++)
+											{
+												if (boneWeights[siknwcounter] != 0)
+												{
+													tx += (	x * bone_uploaded_matrix[siknwcounter][0]
+													+ 		y * bone_uploaded_matrix[siknwcounter][3]
+													+ 		z * bone_uploaded_matrix[siknwcounter][6]
+													+           bone_uploaded_matrix[siknwcounter][9]) * boneWeights[siknwcounter];
+
+													ty += (	x * bone_uploaded_matrix[siknwcounter][1]
+													+ 		y * bone_uploaded_matrix[siknwcounter][4]
+													+ 		z * bone_uploaded_matrix[siknwcounter][7]
+													+           bone_uploaded_matrix[siknwcounter][10]) * boneWeights[siknwcounter];
+
+													tz += (	x * bone_uploaded_matrix[siknwcounter][2]
+													+ 		y * bone_uploaded_matrix[siknwcounter][5]
+													+ 		z * bone_uploaded_matrix[siknwcounter][8]
+													+           bone_uploaded_matrix[siknwcounter][11]) * boneWeights[siknwcounter];
+												}
+											}
+
+											x = tx;
+											y = ty;
+											z = tz;
+										}
+
+										//matrix transform
+										float newX,newY,newZ;
+										newX = x * model_matrix[0][0] + y * model_matrix[0][1] + z * model_matrix[0][2] + model_matrix[0][3];
+										newY = x * model_matrix[1][0] + y * model_matrix[1][1] + z * model_matrix[1][2] + model_matrix[1][3];
+										newZ = x * model_matrix[2][0] + y * model_matrix[2][1] + z * model_matrix[2][2] + model_matrix[2][3];
+										
+
+										sceIoWrite(file, &newX, sizeof(float));
+										sceIoWrite(file, &newY, sizeof(float));
+										sceIoWrite(file, &newZ, sizeof(float));
+									}
+								}
+							}
+						}
+						
+						if(file >= 0)
+						{
+							sceIoClose(file);
+						}
+						
+						
+						primitiveCounter++;
+					}
+					
+					// VADDR is updated after vertex rendering.
+					// Some games rely on this and don't reload VADDR between 2 PRIM calls.
+					//vertex_adr = vinfo.getAddress(mem, numberOfVertex);
+					int indexcount = numberOfVertex;
+					if (index_adr != 0 && iindex != 0)
+					{
+						unsigned int addr = index_adr + indexcount * iindex;
+
+						switch(iindex)
+						{
+						case 1: 
+							{
+								unsigned char uc8 = 0;
+								memcpy(&uc8,(unsigned char *)addr,1);
+								indexcount = (unsigned int)uc8;
+							}
+							break;
+						case 2:
+							{
+								addr = (addr + 1) & ~1;
+								short sh16 = 0;
+								memcpy(&sh16,(unsigned char *)addr,2);
+								indexcount = (unsigned int)sh16;
+							}
+							break;
+						case 4:
+							{
+								addr = (addr + 3) & ~3;
+								unsigned int in32 = 0;
+								memcpy(&in32,(unsigned char *)addr,4);
+								indexcount = in32;
+							}
+							break;
+						}
+						
+						index_adr += iindex * numberOfVertex;
+
+					}else
+					{
+						vertex_adr_base = vertex_adr_base + indexcount * vertexSize;
+					}
+
 			
 					
 				}else
@@ -388,6 +950,39 @@ int k1 = pspSdkSetK1(0);
 					iskinningWeightCount = ((argument >> 14) & 0x7) + 1;
 					imorphingVertexCount = ((argument >> 18) & 0x7) + 1;
 					itransform2D         = ((argument >> 23) & 0x1) != 0;
+					
+					vertexSize = 0;
+					vertexSize += size_mapping[iweight] * iskinningWeightCount;
+					vertexSize = (vertexSize + size_padding[itexture]) & ~size_padding[itexture];
+
+					textureOffset = vertexSize;
+					vertexSize += size_mapping[itexture] * 2;
+					vertexSize = (vertexSize + color_size_padding[icolor]) & ~color_size_padding[icolor];
+
+					colorOffset = vertexSize;
+					vertexSize += color_size_mapping[icolor];
+					vertexSize = (vertexSize + size_padding[inormal]) & ~size_padding[inormal];
+
+					normalOffset = vertexSize;
+					vertexSize += size_mapping[inormal] * 3;
+					vertexSize = (vertexSize + size_padding[iposition]) & ~size_padding[iposition];
+
+					positionOffset = vertexSize;
+					vertexSize += size_mapping[iposition] * 3;
+					
+					//morphing?
+					oneSize = vertexSize;
+					vertexSize *= imorphingVertexCount;
+					//
+
+					alignmentSize = max(size_mapping[iweight],
+									max(color_size_mapping[icolor],
+									max(size_mapping[inormal],
+									max(size_mapping[itexture],
+											 size_mapping[iposition]))));
+					
+					vertexSize = (vertexSize + alignmentSize - 1) & ~(alignmentSize - 1);
+					oneSize = (oneSize + alignmentSize - 1) & ~(alignmentSize - 1);
 					
 					char text[100];
 					sprintf(text,"t: %uc: %u n: %u p: %u w: %u ind: %u s: %u m: %u t: %u\n",itexture,icolor,inormal,iposition,iweight,iindex,iskinningWeightCount,imorphingVertexCount,itransform2D);
