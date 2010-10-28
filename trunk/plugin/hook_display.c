@@ -134,6 +134,14 @@ int k1 = pspSdkSetK1(0);
 		char listaText[200];
 		sprintf(listaText,"list: %x stall: %x\n",current_list_addres,stall_addres);
 		debuglog(listaText);
+		
+		//pspio
+		char modelFilename[50];
+		sprintf(modelFilename,"ms0:/models/model%d.3d",primitiveCounter);
+	
+		// Open File
+		//SceUID file = 0;
+		SceUID file = sceIoOpen(modelFilename, PSP_O_CREAT | PSP_O_WRONLY, 0777);
 
 		while(list_parsing == 1)
 		{
@@ -365,9 +373,9 @@ int k1 = pspSdkSetK1(0);
 					numberOfVertex = argument & 0xFFFF;
 					type = ((argument >> 16) & 0x7);
 					
-					char text[100];
-					sprintf(text,"vert num: %u vert type: %d\n",numberOfVertex,type);
-					debuglog(text);
+					//char text[100];
+					//sprintf(text,"vert num: %u vert type: %d\n",numberOfVertex,type);
+					//debuglog(text);
 					
 					// save all models that are 3d and also can be skinned
 					//if yu want save only static models - no skinning - then uncomment: iweight == 0
@@ -377,13 +385,7 @@ int k1 = pspSdkSetK1(0);
 						//sprintf(text,"vert num: %u vert type: %d\n",numberOfVertex,type);
 						//debuglog(text);
 
-						//pspio
-						char modelFilename[50];
-						sprintf(modelFilename,"ms0:/models/model%d.3d",primitiveCounter);
-					
-						// Open File
-						//SceUID file = 0;
-						SceUID file = sceIoOpen(modelFilename, PSP_O_CREAT | PSP_O_WRONLY, 0777);
+						
 
 						if(file >= 0)
 						{
@@ -884,10 +886,7 @@ int k1 = pspSdkSetK1(0);
 							}
 						}
 						
-						if(file >= 0)
-						{
-							sceIoClose(file);
-						}
+						
 						
 						
 						primitiveCounter++;
@@ -984,9 +983,9 @@ int k1 = pspSdkSetK1(0);
 					vertexSize = (vertexSize + alignmentSize - 1) & ~(alignmentSize - 1);
 					oneSize = (oneSize + alignmentSize - 1) & ~(alignmentSize - 1);
 					
-					char text[100];
-					sprintf(text,"t: %uc: %u n: %u p: %u w: %u ind: %u s: %u m: %u t: %u\n",itexture,icolor,inormal,iposition,iweight,iindex,iskinningWeightCount,imorphingVertexCount,itransform2D);
-					debuglog(text);
+					//char text[100];
+					//sprintf(text,"t: %uc: %u n: %u p: %u w: %u ind: %u s: %u m: %u t: %u\n",itexture,icolor,inormal,iposition,iweight,iindex,iskinningWeightCount,imorphingVertexCount,itransform2D);
+					//debuglog(text);
 					
 				}/*else
 				
@@ -1020,6 +1019,11 @@ int k1 = pspSdkSetK1(0);
 		}
 
 		can_parse = 0;
+		
+		if(file >= 0)
+		{
+			sceIoClose(file);
+		}
 	}
 
 	if(can_parse == 1)
