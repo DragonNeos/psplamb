@@ -77,10 +77,12 @@ int size_padding[4] = { 0, 0, 1, 3 };
 int color_size_mapping[8] = { 0, 0, 0, 0, 2, 2, 2, 4 };
 int color_size_padding[8] = { 0, 0, 0, 0, 1, 1, 1, 3 };
 
+int primitiveCounter = 0;
+
 
 void RipData()
 {
-int k1 = pspSdkSetK1(0);
+	int k1 = pspSdkSetK1(0);
 	if(can_parse == 2)
 	{
 		char texto[50];
@@ -112,7 +114,7 @@ int k1 = pspSdkSetK1(0);
 		int     model_upload_y = 0;
 		float 	model_matrix[3][4];
 		
-		int primitiveCounter = 0;
+		
 		
 		//for morphing
 		int textureOffset = 0;
@@ -735,9 +737,9 @@ int k1 = pspSdkSetK1(0);
 										}
 
 										float newX,newY,newZ;
-										newX = mx * model_matrix[0][0] + my * model_matrix[0][1] + mz * model_matrix[0][2] + model_matrix[0][3];
-										newY = mx * model_matrix[1][0] + my * model_matrix[1][1] + mz * model_matrix[1][2] + model_matrix[1][3];
-										newZ = mx * model_matrix[2][0] + my * model_matrix[2][1] + mz * model_matrix[2][2] + model_matrix[2][3];
+										newX = ((mx * model_matrix[0][0]) + (my * model_matrix[0][1]) + (mz * model_matrix[0][2])) + model_matrix[0][3];
+										newY = ((mx * model_matrix[1][0]) + (my * model_matrix[1][1]) + (mz * model_matrix[1][2])) + model_matrix[1][3];
+										newZ = ((mx * model_matrix[2][0]) + (my * model_matrix[2][1]) + (mz * model_matrix[2][2])) + model_matrix[2][3];
 										
 
 										sceIoWrite(file, &newX, sizeof(float));
@@ -873,9 +875,9 @@ int k1 = pspSdkSetK1(0);
 
 										//matrix transform
 										float newX,newY,newZ;
-										newX = x * model_matrix[0][0] + y * model_matrix[0][1] + z * model_matrix[0][2] + model_matrix[0][3];
-										newY = x * model_matrix[1][0] + y * model_matrix[1][1] + z * model_matrix[1][2] + model_matrix[1][3];
-										newZ = x * model_matrix[2][0] + y * model_matrix[2][1] + z * model_matrix[2][2] + model_matrix[2][3];
+										newX = ((x * model_matrix[0][0]) + (y * model_matrix[0][1]) + (z * model_matrix[0][2])) + model_matrix[0][3];
+										newY = ((x * model_matrix[1][0]) + (y * model_matrix[1][1]) + (z * model_matrix[1][2])) + model_matrix[1][3];
+										newZ = ((x * model_matrix[2][0]) + (y * model_matrix[2][1]) + (z * model_matrix[2][2])) + model_matrix[2][3];
 										
 
 										sceIoWrite(file, &newX, sizeof(float));
@@ -885,11 +887,7 @@ int k1 = pspSdkSetK1(0);
 								}
 							}
 						}
-						
-						
-						
-						
-						primitiveCounter++;
+
 					}
 					
 					// VADDR is updated after vertex rendering.
@@ -1013,9 +1011,11 @@ int k1 = pspSdkSetK1(0);
 			
 				list_parsing = 0;
 				can_parse = 2;
+				primitiveCounter++;
 				
 			}else
 				list_parsing = 0;
+				primitiveCounter++;
 		}
 
 		can_parse = 0;
