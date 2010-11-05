@@ -58,6 +58,7 @@ unsigned int *currentDList_pc = 0;
 int currentDList_status = 0;
 
 unsigned int currentDList_stack[64];
+unsigned int currentDList_basestack[64];
 unsigned int currentDList_stackIndex = 0;
 
 int currentDList_finished = 0;
@@ -66,28 +67,196 @@ int currentDList_reset = 0;
 int currentDList_restarted = 0;
 //end dispay list stuff
 
+//vertex stuff
+unsigned int vertexBase = 0;
+unsigned int vertexPntr = 0;
+unsigned int base = 0;
+unsigned int baseOffset = 0;
+unsigned int indexPntr = 0;
+
+
+
+//end vertex stuff
+unsigned int addressMask = 0x3FFFFFFF;
+
 
 int can_parse = 0;
 int primitiveCounter = 0;
 
 float getFloat(unsigned int data){ data<<=8; return *(float*)(&data);} 
 
-void ExecuteCommand(unsigned int command,unsigned int argument)
+void debugCommand(unsigned int command,unsigned int argument)
 {
-
-	float argif = getFloat(argument);
-	float fargument = 0.0f;
-	memcpy(&fargument,&argif,4);
+	float fargument = getFloat(argument);
 
 	char text[70];
 	sprintf(text,"addres: %x command: %u arg: %u farg: %f\n",currentDList,command,argument,fargument);
 	debuglog(text);
-	
-	if(command == 12)
+}
+
+void ExecuteCommand(unsigned int command,unsigned int argument)
+{
+	//commands
+	switch(command)
 	{
-		//end
-		currentDList_ended = 1;
-		currentDList_finished = 1;
+		case 0x00://NOP
+		{
+			int test = 0;
+			
+			if( ((*currentDList) & addressMask) >=  START_RAM || ((*currentDList) & addressMask) <= END_RAM )
+				test = 1;
+				
+			if( ((*currentDList) & addressMask) >=  START_VRAM || ((*currentDList) & addressMask) <= END_VRAM )
+				test = 1;
+				
+			if(test == 0)
+			{
+				char text[70];
+				sprintf(text,"addres: %x Wrong read addres!\n",currentDList);
+				//end
+				currentDList_ended = 1;
+				currentDList_finished = 1;
+			}
+			
+			debugCommand(command,argument);
+		}
+		break;
+		
+		case 0x01://VADR
+		{
+			vertexBase = ( base | argument) + baseOffset;
+			
+			/*if(vertex_adr_base >= START_VRAM && vertex_adr_base < END_VRAM)
+			{
+				vertex_adr_base = (0x44000000 | (vertex_adr_base & 0x3FFFFFFF));
+			}
+			if(vertex_adr_base >= START_RAM && vertex_adr_base < END_RAM)
+			{
+				vertex_adr_base = (START_RAM | (vertex_adr_base & 0x3FFFFFFF));
+			}*/
+			
+			debugCommand(command,argument);
+		}
+		break;
+		
+		case 0x02://IADR index array adress
+		{
+			indexPntr = ( base | argument) + baseOffset;
+			
+			/*if(vertex_adr_base >= START_VRAM && vertex_adr_base < END_VRAM)
+			{
+				vertex_adr_base = (0x44000000 | (vertex_adr_base & 0x3FFFFFFF));
+			}
+			if(vertex_adr_base >= START_RAM && vertex_adr_base < END_RAM)
+			{
+				vertex_adr_base = (START_RAM | (vertex_adr_base & 0x3FFFFFFF));
+			}*/
+			
+			debugCommand(command,argument);
+		}
+		break;
+		
+		case 0x08: //JUMP
+		{
+			unsigned int jump = (( base | argument) + baseOffset) & 0xFFFFFFFC;
+			currentDList = (unsigned int*)jump;
+			
+			debugCommand(command,argument);
+		}
+		break;
+
+		case 0x09: //BJUMP
+		{
+			//nothing right now...
+			debugCommand(command,argument);
+		}
+		break;
+		
+		case 0x10: //BASE
+		{
+			base = (argument << 8) & 0xff000000;
+			
+			debugCommand(command,argument);
+		}
+		break;
+		
+		case 0x13: //OFF_ADR
+		{
+			baseOffset = argument << 8;
+			
+			debugCommand(command,argument);
+		}
+		break;
+		
+		case 0x14: //ORIGIN_ADR
+		{
+			baseOffset = currentDList - 1;
+			
+			debugCommand(command,argument);
+		}
+		break;
+		
+		case 0x0A: //CALL
+		{
+			currentDList_stack[currentDList_stackIndex] = currentDList;
+			currentDList_basestack[currentDList_stackIndex] = base;
+			currentDList_stackIndex++;
+			
+			unsigned int call = (( base | argument) + baseOffset) & 0xFFFFFFFC;
+			currentDList = (unsigned int*)call;
+			
+			debugCommand(command,argument);
+		}
+		
+		case 0x0B: //RET
+		{
+			currentDList_stackIndex--;
+			
+			currentDList = (unsigned int*)currentDList_stack[currentDList_stackIndex];
+			base = currentDList_basestack[currentDList_stackIndex];
+			
+			debugCommand(command,argument);
+		}
+		break;
+		
+		case 0x0C: //END
+		{
+			currentDList_ended = 1;
+			
+			debugCommand(command,argument);
+		}
+		break;
+		
+		case 0x0F: //FINISH
+		{
+			currentDList_finished = 1;
+			
+			debugCommand(command,argument);
+		}
+		break;
+		
+		
+		//graphics commands
+		case 0x04: //PRIM
+		{
+			int numberOfVertex = argument & 0xFFFF;
+			int type = ((argument >> 16) & 0x7);
+
+			char text[70];
+			sprintf(text,"%d %d\n",numberOfVertex,type);
+			debuglog(text);
+			
+			debugCommand(command,argument);
+		}
+		break;
+		
+		case 0x12: //VERTEX TYPE
+		{
+			
+			debugCommand(command,argument);
+		}
+		break;
+		
 	}
 }
 
@@ -128,8 +297,6 @@ void RipData()
 				currentDList++;
 				
 				ExecuteCommand(command,argument);
-				
-				
 			}		
 		}
 	}
