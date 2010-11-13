@@ -74,6 +74,31 @@ unsigned int base = 0;
 unsigned int baseOffset = 0;
 unsigned int indexPntr = 0;
 
+//vertex structure
+int itexture = 0;
+int icolor = 0;
+int inormal = 0;
+int iposition = 0;
+int iweight = 0;
+int iindex = 0;
+int iskinningWeightCount = 0;
+int imorphingVertexCount = 0;
+int itransform2D         = 0;
+
+int size_mapping[4] = { 0, 1, 2, 4 };
+int size_padding[4] = { 0, 0, 1, 3 };
+int color_size_mapping[8] = { 0, 1, 1, 1, 2, 2, 2, 4 };
+int color_size_padding[8] = { 0, 0, 0, 0, 1, 1, 1, 3 };
+
+int vertexSize = 0;
+int alignmentSize = 0;
+
+int textureOffset = 0;
+int colorOffset = 0;
+int normalOffset = 0;
+int positionOffset = 0;
+int oneSize = 0;
+
 
 
 //end vertex stuff
@@ -85,42 +110,98 @@ int primitiveCounter = 0;
 
 float getFloat(unsigned int data){ data<<=8; return *(float*)(&data);} 
 
-void debugCommand(unsigned int command,unsigned int argument)
+int max(int a,int b)
 {
-	float fargument = getFloat(argument);
+	return (b<a)?a:b;
+}
+
+void debugCommand(int command,int argument)
+{
+	//float fargument = getFloat(argument);
 
 	char text[70];
-	sprintf(text,"addres: %x command: %u arg: %u farg: %f\n",currentDList,command,argument,fargument);
+	sprintf(text,"addres: %x command: %d arg: %d\n",currentDList,command,argument);
 	debuglog(text);
 }
 
-void ExecuteCommand(unsigned int command,unsigned int argument)
+void ExecuteCommand(int command,int argument)
 {
-	//commands
 	switch(command)
 	{
-		case 0x00://NOP
+		
+		case 0x08: //JUMP
 		{
-			int test = 0;
+			unsigned int jump = (( base | argument) + baseOffset) & 0xFFFFFFFC;
+			currentDList = (unsigned int*)jump;
 			
-			if( ((*currentDList) & addressMask) >=  START_RAM || ((*currentDList) & addressMask) <= END_RAM )
-				test = 1;
-				
-			if( ((*currentDList) & addressMask) >=  START_VRAM || ((*currentDList) & addressMask) <= END_VRAM )
-				test = 1;
-				
-			if(test == 0)
-			{
-				char text[70];
-				sprintf(text,"addres: %x Wrong read addres!\n",currentDList);
-				//end
-				currentDList_ended = 1;
-				currentDList_finished = 1;
-			}
-			
-			debugCommand(command,argument);
+			char text[100];
+			sprintf(text,"JUMP: %x\n",jump);
+			debuglog(text);
 		}
 		break;
+		
+		case 0x10: //BASE
+		{
+			base = (argument << 8) & 0xff000000;
+			
+			char text[100];
+			sprintf(text,"BASE: %x\n",base);
+			debuglog(text);
+		}
+		break;
+		
+		case 0x13: //OFF_ADR
+		{
+			baseOffset = argument << 8;
+			
+			//debugCommand(command,argument);
+			
+			char text[100];
+			sprintf(text,"BASE off: %x\n",baseOffset);
+			debuglog(text);
+		}
+		break;
+		
+		case 0x14: //ORIGIN_ADR
+		{
+			baseOffset = currentDList - 1;
+			
+			char text[100];
+			sprintf(text,"BASE off: %x\n",baseOffset);
+			debuglog(text);
+		}
+		break;
+		
+		case 0x0A: //CALL
+		{
+			unsigned int npc = (( base | argument) + baseOffset) & 0xFFFFFFFC;
+			
+			currentDList_stack[currentDList_stackIndex] = currentDList;
+			currentDList_basestack[currentDList_stackIndex] = baseOffset;
+			currentDList_stackIndex++;
+			
+			currentDList = (unsigned int*)npc;
+		
+			char text[100];
+			sprintf(text,"CALL: %x\n",npc);
+			debuglog(text);
+		}
+		break;
+		
+		case 0x0B: //RET
+		{
+			currentDList_stackIndex--;
+			
+			currentDList = (unsigned int*)currentDList_stack[currentDList_stackIndex];
+			baseOffset = currentDList_basestack[currentDList_stackIndex];
+			
+			char text[100];
+			sprintf(text,"RET: %x\n",currentDList_stack[currentDList_stackIndex]);
+			debuglog(text);
+		}
+		break;
+
+
 		
 		case 0x01://VADR
 		{
@@ -156,74 +237,22 @@ void ExecuteCommand(unsigned int command,unsigned int argument)
 		}
 		break;
 		
-		case 0x08: //JUMP
-		{
-			unsigned int jump = (( base | argument) + baseOffset) & 0xFFFFFFFC;
-			currentDList = (unsigned int*)jump;
-			
-			debugCommand(command,argument);
-		}
-		break;
-
 		case 0x09: //BJUMP
 		{
 			//nothing right now...
-			debugCommand(command,argument);
+			//debugCommand(command,argument);
 		}
 		break;
-		
-		case 0x10: //BASE
-		{
-			base = (argument << 8) & 0xff000000;
-			
-			debugCommand(command,argument);
-		}
-		break;
-		
-		case 0x13: //OFF_ADR
-		{
-			baseOffset = argument << 8;
-			
-			debugCommand(command,argument);
-		}
-		break;
-		
-		case 0x14: //ORIGIN_ADR
-		{
-			baseOffset = currentDList - 1;
-			
-			debugCommand(command,argument);
-		}
-		break;
-		
-		case 0x0A: //CALL
-		{
-			currentDList_stack[currentDList_stackIndex] = currentDList;
-			currentDList_basestack[currentDList_stackIndex] = base;
-			currentDList_stackIndex++;
-			
-			unsigned int call = (( base | argument) + baseOffset) & 0xFFFFFFFC;
-			currentDList = (unsigned int*)call;
-			
-			debugCommand(command,argument);
-		}
-		
-		case 0x0B: //RET
-		{
-			currentDList_stackIndex--;
-			
-			currentDList = (unsigned int*)currentDList_stack[currentDList_stackIndex];
-			base = currentDList_basestack[currentDList_stackIndex];
-			
-			debugCommand(command,argument);
-		}
-		break;
+
 		
 		case 0x0C: //END
 		{
 			currentDList_ended = 1;
 			
-			debugCommand(command,argument);
+			char text[100];
+			sprintf(text,"End \n");
+			debuglog(text);
+
 		}
 		break;
 		
@@ -231,7 +260,9 @@ void ExecuteCommand(unsigned int command,unsigned int argument)
 		{
 			currentDList_finished = 1;
 			
-			debugCommand(command,argument);
+			char text[100];
+			sprintf(text,"Finish \n");
+			debuglog(text);
 		}
 		break;
 		
@@ -252,11 +283,64 @@ void ExecuteCommand(unsigned int command,unsigned int argument)
 		
 		case 0x12: //VERTEX TYPE
 		{
+			itexture             = (argument >>  0) & 0x3;
+			icolor               = (argument >>  2) & 0x7;
+			inormal              = (argument >>  5) & 0x3;
+			iposition            = (argument >>  7) & 0x3;
+			iweight              = (argument >>  9) & 0x3;
+			iindex               = (argument >> 11) & 0x3;
+			iskinningWeightCount = ((argument >> 14) & 0x7) + 1;
+			imorphingVertexCount = ((argument >> 18) & 0x7) + 1;
+			itransform2D         = ((argument >> 23) & 0x1) != 0;
 			
-			debugCommand(command,argument);
+			
+			
+			vertexSize = 0;
+			vertexSize += size_mapping[iweight] * iskinningWeightCount;
+			vertexSize = (vertexSize + size_padding[itexture]) & ~size_padding[itexture];
+
+			textureOffset = vertexSize;
+			vertexSize += size_mapping[itexture] * 2;
+			vertexSize = (vertexSize + color_size_padding[icolor]) & ~color_size_padding[icolor];
+
+			colorOffset = vertexSize;
+			vertexSize += color_size_mapping[icolor];
+			vertexSize = (vertexSize + size_padding[inormal]) & ~size_padding[inormal];
+
+			normalOffset = vertexSize;
+			vertexSize += size_mapping[inormal] * 3;
+			vertexSize = (vertexSize + size_padding[iposition]) & ~size_padding[iposition];
+
+			positionOffset = vertexSize;
+			vertexSize += size_mapping[iposition] * 3;
+			
+			//morphing?
+			oneSize = vertexSize;
+			vertexSize *= imorphingVertexCount;
+			//
+
+			alignmentSize = max(size_mapping[iweight],
+							max(color_size_mapping[icolor],
+							max(size_mapping[inormal],
+							max(size_mapping[itexture],
+									 size_mapping[iposition]))));
+			
+			vertexSize = (vertexSize + alignmentSize - 1) & ~(alignmentSize - 1);
+			oneSize = (oneSize + alignmentSize - 1) & ~(alignmentSize - 1);
+
+			char text[100];
+			sprintf(text,"t:%d c:%d n:%d p:%d w:%d i:%d sk:%d mo:%d tr:%d\n",itexture,icolor,inormal,iposition,iweight,iindex,iskinningWeightCount,imorphingVertexCount,itransform2D);
+			debuglog(text);
+			
+			//debugCommand(command,argument);
 		}
 		break;
 		
+		default:
+		{
+			//debugCommand(command,argument);
+		}
+		break;
 	}
 }
 
@@ -270,7 +354,7 @@ void RipData()
         currentDList_status = 2;//PSP_GE_LIST_DRAWING;
 		
 		char text[70];
-		sprintf(text,"addres1: %x addres2: %x\n",currentDList,currentDList_stall_addr);
+		sprintf(text,"addres1: %x addres2: %x\n",currentDList_addr,currentDList_stall_addr);
 		debuglog(text);
 		
 		while (!listHasEnded)
@@ -283,7 +367,8 @@ void RipData()
 					can_parse = 0;
 					break;
 				}
-			}else
+			}
+			else
 			if(currentDList >= currentDList_stall_addr)
 			{
 				listHasEnded = 1;
@@ -291,14 +376,17 @@ void RipData()
 				break;
 			}else
 			{
-				unsigned int command  = (*currentDList) >> 24;
-				unsigned int argument = (*currentDList) & 0x00FFFFFF;
+				int command  = (*currentDList) >> 24;
+				int argument = (*currentDList) & 0x00FFFFFF;
 				
 				currentDList++;
 				
 				ExecuteCommand(command,argument);
 			}		
 		}
+		
+		currentDList_finished = 0;
+		currentDList_ended = 0;
 	}
 
 	
