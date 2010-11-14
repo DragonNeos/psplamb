@@ -99,6 +99,11 @@ int normalOffset = 0;
 int positionOffset = 0;
 int oneSize = 0;
 
+//texture info
+int texture_height[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+int texture_width[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+int texture_storage_mode = 0;
+
 
 
 //end vertex stuff
@@ -115,6 +120,11 @@ int max(int a,int b)
 	return (b<a)?a:b;
 }
 
+int min(int a,int b)
+{
+	return (b<a)?b:a;
+}
+
 void debugCommand(int command,int argument)
 {
 	//float fargument = getFloat(argument);
@@ -129,77 +139,7 @@ void ExecuteCommand(int command,int argument)
 	switch(command)
 	{
 		
-		case 0x08: //JUMP
-		{
-			unsigned int jump = (( base | argument) + baseOffset) & 0xFFFFFFFC;
-			currentDList = (unsigned int*)jump;
-			
-			char text[100];
-			sprintf(text,"JUMP: %x\n",jump);
-			debuglog(text);
-		}
-		break;
 		
-		case 0x10: //BASE
-		{
-			base = (argument << 8) & 0xff000000;
-			
-			char text[100];
-			sprintf(text,"BASE: %x\n",base);
-			debuglog(text);
-		}
-		break;
-		
-		case 0x13: //OFF_ADR
-		{
-			baseOffset = argument << 8;
-			
-			//debugCommand(command,argument);
-			
-			char text[100];
-			sprintf(text,"BASE off: %x\n",baseOffset);
-			debuglog(text);
-		}
-		break;
-		
-		case 0x14: //ORIGIN_ADR
-		{
-			baseOffset = currentDList - 1;
-			
-			char text[100];
-			sprintf(text,"BASE off: %x\n",baseOffset);
-			debuglog(text);
-		}
-		break;
-		
-		case 0x0A: //CALL
-		{
-			unsigned int npc = (( base | argument) + baseOffset) & 0xFFFFFFFC;
-			
-			currentDList_stack[currentDList_stackIndex] = currentDList;
-			currentDList_basestack[currentDList_stackIndex] = baseOffset;
-			currentDList_stackIndex++;
-			
-			currentDList = (unsigned int*)npc;
-		
-			char text[100];
-			sprintf(text,"CALL: %x\n",npc);
-			debuglog(text);
-		}
-		break;
-		
-		case 0x0B: //RET
-		{
-			currentDList_stackIndex--;
-			
-			currentDList = (unsigned int*)currentDList_stack[currentDList_stackIndex];
-			baseOffset = currentDList_basestack[currentDList_stackIndex];
-			
-			char text[100];
-			sprintf(text,"RET: %x\n",currentDList_stack[currentDList_stackIndex]);
-			debuglog(text);
-		}
-		break;
 
 
 		
@@ -216,7 +156,7 @@ void ExecuteCommand(int command,int argument)
 				vertex_adr_base = (START_RAM | (vertex_adr_base & 0x3FFFFFFF));
 			}*/
 			
-			debugCommand(command,argument);
+			//debugCommand(command,argument);
 		}
 		break;
 		
@@ -233,39 +173,9 @@ void ExecuteCommand(int command,int argument)
 				vertex_adr_base = (START_RAM | (vertex_adr_base & 0x3FFFFFFF));
 			}*/
 			
-			debugCommand(command,argument);
-		}
-		break;
-		
-		case 0x09: //BJUMP
-		{
-			//nothing right now...
 			//debugCommand(command,argument);
 		}
 		break;
-
-		
-		case 0x0C: //END
-		{
-			currentDList_ended = 1;
-			
-			char text[100];
-			sprintf(text,"End \n");
-			debuglog(text);
-
-		}
-		break;
-		
-		case 0x0F: //FINISH
-		{
-			currentDList_finished = 1;
-			
-			char text[100];
-			sprintf(text,"Finish \n");
-			debuglog(text);
-		}
-		break;
-		
 		
 		//graphics commands
 		case 0x04: //PRIM
@@ -277,7 +187,35 @@ void ExecuteCommand(int command,int argument)
 			sprintf(text,"%d %d\n",numberOfVertex,type);
 			debuglog(text);
 			
-			debugCommand(command,argument);
+			//debugCommand(command,argument);
+		}
+		break;
+		
+		case 0x09: //BJUMP
+		{
+			//nothing right now...
+			//debugCommand(command,argument);
+		}
+		break;
+		
+		case 0x08: //JUMP
+		{
+			unsigned int jump = (( base | argument) + baseOffset) & 0xFFFFFFFC;
+			currentDList = (unsigned int*)jump;
+			
+			//char text[100];
+			//sprintf(text,"JUMP: %x\n",jump);
+			//debuglog(text);
+		}
+		break;
+		
+		case 0x10: //BASE
+		{
+			base = (argument << 8) & 0xff000000;
+			
+			//char text[100];
+			//sprintf(text,"BASE: %x\n",base);
+			//debuglog(text);
 		}
 		break;
 		
@@ -333,6 +271,116 @@ void ExecuteCommand(int command,int argument)
 			debuglog(text);
 			
 			//debugCommand(command,argument);
+		}
+		break;
+		
+		case 0x13: //OFF_ADR
+		{
+			baseOffset = argument << 8;
+			
+			//debugCommand(command,argument);
+			
+			//char text[100];
+			//sprintf(text,"BASE off: %x\n",baseOffset);
+			//debuglog(text);
+		}
+		break;
+		
+		case 0x14: //ORIGIN_ADR
+		{
+			baseOffset = currentDList - 1;
+			
+			//char text[100];
+			//sprintf(text,"BASE off: %x\n",baseOffset);
+			//debuglog(text);
+		}
+		break;
+		
+		case 0x0A: //CALL
+		{
+			unsigned int npc = (( base | argument) + baseOffset) & 0xFFFFFFFC;
+			
+			currentDList_stack[currentDList_stackIndex] = currentDList;
+			currentDList_basestack[currentDList_stackIndex] = baseOffset;
+			currentDList_stackIndex++;
+			
+			currentDList = (unsigned int*)npc;
+		
+			//char text[100];
+			//sprintf(text,"CALL: %x\n",npc);
+			//debuglog(text);
+		}
+		break;
+		
+		case 0x0B: //RET
+		{
+			currentDList_stackIndex--;
+			
+			currentDList = (unsigned int*)currentDList_stack[currentDList_stackIndex];
+			baseOffset = currentDList_basestack[currentDList_stackIndex];
+			
+			//char text[100];
+			//sprintf(text,"RET: %x\n",currentDList_stack[currentDList_stackIndex]);
+			//debuglog(text);
+		}
+		break;
+
+		
+		case 0x0C: //END
+		{
+			currentDList_ended = 1;
+			
+			char text[100];
+			sprintf(text,"End \n");
+			debuglog(text);
+
+		}
+		break;
+		
+		case 0x0F: //FINISH
+		{
+			currentDList_finished = 1;
+			
+			char text[100];
+			sprintf(text,"Finish \n");
+			debuglog(text);
+		}
+		break;
+		
+		
+		//texture stuff
+		//texture size
+		case 0xB8:
+		case 0xB7:
+		case 0xB9:
+		case 0xBA:
+		case 0xBB:
+		case 0xBC:
+		case 0xBD:
+		case 0xBF:
+		{
+			int level = command - 0xB8;
+			
+			int height_exp2 = min((argument >> 8) & 0x0F, 9);
+            int width_exp2 = min((argument) & 0x0F, 9);
+			
+			texture_height[level] = 1 << height_exp2;
+            texture_width[level] = 1 << width_exp2;
+			
+			char text[100];
+			sprintf(text,"Tex level: %d size: %d x %d\n",level,texture_width[level],texture_height[level]);
+			debuglog(text);
+		}
+		break;
+		
+		//texture pixel format
+		case 0xC3:
+		{
+			texture_storage_mode = argument & 0xF; // Lower four bits.
+			
+			char text[100];
+			sprintf(text,"Tex format: %d \n",texture_storage_mode);
+			debuglog(text);
 		}
 		break;
 		
