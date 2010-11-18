@@ -11,16 +11,11 @@
 #include <sstream>
 
 
-struct vPosition
-{
-	float x,y,z;
-};
-
-typedef struct 
+typedef struct
 {
 	float u,v;
 	float x,y,z;
-}TexVertex;
+}TextVertex;
 
 std::string convertWCharArrayToString(const WCHAR * const wcharArray)
 {
@@ -73,7 +68,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			//file found;)
 
 			//read it
-			std::vector<TexVertex> mVertex;
+			std::vector<TextVertex> mVertex;
 
 			FILE *binaryFile;
 			binaryFile = fopen (convertWCharArrayToString(findFileData.cFileName).c_str(), "rb");
@@ -81,6 +76,8 @@ int _tmain(int argc, _TCHAR* argv[])
 			{
 				return -1;
 			}
+
+			fprintf(objFile,"mtllib material.mtl\n");
 
 			//one file only
 			while(!feof(binaryFile))
@@ -96,20 +93,23 @@ int _tmain(int argc, _TCHAR* argv[])
 				//
 				fread(&vertexCount,sizeof(int),1,binaryFile);
 				fread(&vertexType,sizeof(int),1,binaryFile);
-				//fread(&postype,sizeof(int),1,binaryFile);
+				///fread(&postype,sizeof(int),1,binaryFile);
 				//fread(&transform2d,sizeof(int),1,binaryFile);
 
 				
 				for(int i = 0; i < vertexCount;i++)
 				{
-					TexVertex texVert;
-					texVert.x = 0.0f;
-					texVert.y = 0.0f;
-					texVert.z = 0.0f;
+					TextVertex mvertex;
+					mvertex.u = 0.0f;
+					mvertex.v = 0.0f;
+					mvertex.x = 0.0f;
+					mvertex.y = 0.0f;
+					mvertex.z = 0.0f;
 
-					fread(&texVert,sizeof(TexVertex),1,binaryFile);
 
-					mVertex.push_back(texVert);
+					fread(&mvertex,sizeof(TextVertex),1,binaryFile);
+
+					mVertex.push_back(mvertex);
 
 					//if (mPosition.x > 100000 || mPosition.x < -100000 || mPosition.y > 100000 || mPosition.y < -100000 || mPosition.z > 100000 || mPosition.z < -100000)
 					//{
@@ -117,6 +117,8 @@ int _tmain(int argc, _TCHAR* argv[])
 					//}
 				}
 				printf("vc: %d vt: %d\n",vertexCount,vertexType);
+
+				
 
 				
 				if (transform2d == 0)
@@ -135,7 +137,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 						fprintf(objFile,"\n");
 
-						//vt - vertex texture
+						//vt - vertex texture data
 						for(int i = 0; i < vertexCount;i++)
 						{
 							fprintf(objFile,"vt %f %f\n",mVertex[i].u,mVertex[i].v);
@@ -155,7 +157,7 @@ int _tmain(int argc, _TCHAR* argv[])
 						{
 							for (int i = 1; i < vertexCount+1;i+=3)
 							{
-								fprintf(objFile,"f %d/%d %d/%d %d/%d\n",vertex_Count + i,vertex_Count + i,vertex_Count + i,vertex_Count + i+1,vertex_Count + i+2,vertex_Count + i+2);
+								fprintf(objFile,"f %d/%d %d/%d %d/%d\n",vertex_Count + i,vertex_Count + i,vertex_Count + i+1,vertex_Count + i+1,vertex_Count + i+2,vertex_Count + i+2);
 							}
 							vertex_Count += vertexCount+1;
 						}
@@ -194,8 +196,6 @@ int _tmain(int argc, _TCHAR* argv[])
 
 							}
 
-							fprintf(objFile,"\n");
-
 							flip = false;
 							stripcount = 0;
 							//v - vertex data
@@ -205,25 +205,28 @@ int _tmain(int argc, _TCHAR* argv[])
 								{
 									if(flip)
 									{
-										fprintf(objFile,"vt %f %f \n",mVertex[i-2].u,mVertex[i-2].v);
-										fprintf(objFile,"vt %f %f \n",mVertex[i-1].u,mVertex[i-1].v);
-										fprintf(objFile,"vt %f %f \n",mVertex[i].u,mVertex[i].v);
+										fprintf(objFile,"vt %f %f\n",mVertex[i-2].u,mVertex[i-2].v);
+										fprintf(objFile,"vt %f %f\n",mVertex[i-1].u,mVertex[i-1].v);
+										fprintf(objFile,"vt %f %f\n",mVertex[i].u,mVertex[i].v);
 									}else
 									{
-										fprintf(objFile,"vt %f %f \n",mVertex[i].u,mVertex[i].v);
-										fprintf(objFile,"vt %f %f \n",mVertex[i-1].u,mVertex[i-1].v);
-										fprintf(objFile,"vt %f %f \n",mVertex[i-2].u,mVertex[i-2].v);
+										fprintf(objFile,"vt %f %f\n",mVertex[i].u,mVertex[i].v);
+										fprintf(objFile,"vt %f %f\n",mVertex[i-1].u,mVertex[i-1].v);
+										fprintf(objFile,"vt %f %f\n",mVertex[i-2].u,mVertex[i-2].v);
 									}
-
+									
 									stripcount+=3;
 									flip=!flip;
 								}else
 								{
-									fprintf(objFile,"vt %f %f \n",mVertex[i].u,mVertex[i].v);
+									fprintf(objFile,"vt %f %f\n",mVertex[i].u,mVertex[i].v);
 									stripcount+=1;
 								}
 
 							}
+
+
+
 							//g - model name
 							fprintf(objFile,"\ng model%d\n",model_number);
 							//f - faces
@@ -242,7 +245,7 @@ int _tmain(int argc, _TCHAR* argv[])
 								}
 								vertex_Count += stripcount+1;
 							}
-						}else
+						}/*else
 							if(vertexType == 5)
 							{
 								model_number++;
@@ -256,38 +259,27 @@ int _tmain(int argc, _TCHAR* argv[])
 									fprintf(objFile,"v %f %f %f\n",mVertex[i+1].x,mVertex[i+1].y,mVertex[i+1].z);
 									fancount+=3;
 								}
-
-								fprintf(objFile,"\n");
-
-								fancount = 0;
-								for(int i = 1; i < vertexCount - 1;i++)
-								{
-									fprintf(objFile,"vt %f %f\n",mVertex[0].u,mVertex[0].v);
-									fprintf(objFile,"vt %f %f\n",mVertex[i].u,mVertex[i].v);
-									fprintf(objFile,"vt %f %f\n",mVertex[i+1].u,mVertex[i+1].v);
-									fancount+=3;
-								}
-
-
 								//g - model name
 								fprintf(objFile,"\ng model%d\n",model_number);
+								fprintf(objFile,"usemtl grid\n");
+								
 								//f - faces
 								if (vertex_Count > 0)
 								{
 									for (int i = 0; i < fancount;i+=3)
 									{
-										fprintf(objFile,"f %d/%d %d/%d %d/%d\n",vertex_Count + i,vertex_Count + i,vertex_Count + i+1,vertex_Count + i+1,vertex_Count + i+2,vertex_Count + i+2);
+										fprintf(objFile,"f %d %d %d\n",vertex_Count + i,vertex_Count + i+1,vertex_Count + i+2);
 									}
 									vertex_Count += fancount;
 								}else
 								{
 									for (int i = 1; i < fancount+1;i+=3)
 									{
-										fprintf(objFile,"f %d/%d %d/%d %d/%d\n",vertex_Count + i,vertex_Count + i,vertex_Count + i+1,vertex_Count + i+1,vertex_Count + i+2,vertex_Count + i+2);
+										fprintf(objFile,"f %d %d %d\n",vertex_Count + i,vertex_Count + i+1,vertex_Count + i+2);
 									}
 									vertex_Count += fancount+1;
 								}
-							}
+							}*/
 				}
 				
 			}
