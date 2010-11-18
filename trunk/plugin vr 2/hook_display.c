@@ -137,6 +137,18 @@ int texture_storage_mode = 0;
 //end vertex stuff
 unsigned int addressMask = 0x3FFFFFFF;
 
+//world matrix
+int world_uploaded_index = 0;
+int world_uploaded_maxIndex = 12;
+float world_uploaded_matrix[12] = { 1.0f,0.0f,0.0f,0.0f,1.0f,0.0f,0.0f,0.0f,1.0f,0.0f,0.0f,0.0f,};
+int world_uploaded_matrixIndex[12];
+
+int 	model_upload_start = 0;
+int     model_upload_x = 0;
+int     model_upload_y = 0;
+float 	model_matrix[3][4];
+
+
 //bones stuff
 int boneMatrixIndex = 0;
 float bone_uploaded_matrix[8][4 * 3];
@@ -167,9 +179,9 @@ void debugCommand(int command,int argument)
 {
 	//float fargument = getFloat(argument);
 
-	char text[70];
-	sprintf(text,"addres: %x command: %d arg: %d\n",currentDList,command,argument);
-	debuglog(text);
+	//char text[70];
+	//sprintf(text,"addres: %x command: %d arg: %d\n",currentDList,command,argument);
+	//debuglog(text);
 }
 
 void ExecuteCommand(int command,int argument)
@@ -223,7 +235,7 @@ void ExecuteCommand(int command,int argument)
 			
 			//start reading vertext info
 			//only skinned and not 2d vertices
-			if(iweight != 0 && itexture != 0 && itransform2D == 0)
+			if(/*iweight != 0 &&*/ itexture != 0 && itransform2D == 0)
 			{
 			
 				if(file >= 0)
@@ -246,7 +258,7 @@ void ExecuteCommand(int command,int argument)
 					float boneWeights[8];
 					float tu,tv;
 					float nx,ny,nz;
-					float px,py,pz;
+					float px = 0.0f,py = 0.0f,pz = 0.0f;
 					
 					//if there is indexing
 					if(indexPntr != 0 && iindex != 0)
@@ -371,8 +383,11 @@ void ExecuteCommand(int command,int argument)
 								vertexAddres = (vertexAddres + 3) & ~3;
 								
 								memcpy(&tu,(unsigned char *)vertexAddres,4);
+								vertexAddres+=4;
 								memcpy(&tv,(unsigned char *)vertexAddres,4);
+								vertexAddres+=4;
 							}
+							break;
 						}
 					}
 					
@@ -462,7 +477,7 @@ void ExecuteCommand(int command,int argument)
 							case 2:
 							{
 								short s16 = 0;
-								vertexAddres = (vertexAddres + 1) & ~1;
+								//vertexAddres = (vertexAddres + 1) & ~1;
 
 								// X and Y are signed 16 bit, Z is unsigned 16 bit
 								memcpy(&s16,(unsigned char *)vertexAddres,2);
@@ -487,7 +502,7 @@ void ExecuteCommand(int command,int argument)
 							case 3:
 							{
 								vertexAddres = (vertexAddres + 3) & ~3;
-
+								
 								memcpy(&px,(unsigned char *)vertexAddres,4);
 								vertexAddres+=4;
 								memcpy(&py,(unsigned char *)vertexAddres,4);
@@ -499,7 +514,7 @@ void ExecuteCommand(int command,int argument)
 						}
 						
 						//skinning
-						if (iweight != 0)
+						/*if (iweight != 0)
 						{
 							//temp values
 							float sx = 0, sy = 0, sz = 0;
@@ -530,9 +545,33 @@ void ExecuteCommand(int command,int argument)
 							px = sx;
 							py = sy;
 							pz = sz;							
-						}
+						}*/
 						
 					}
+					
+					
+					//translation
+					float sx = 0, sy = 0, sz = 0;
+					
+					sx = (	px * world_uploaded_matrix[0]
+					+ 		py * world_uploaded_matrix[3]
+					+ 		pz * world_uploaded_matrix[6]
+					+            world_uploaded_matrix[9]);
+
+					sy = (	px * world_uploaded_matrix[1]
+					+ 		py * world_uploaded_matrix[4]
+					+ 		pz * world_uploaded_matrix[7]
+					+            world_uploaded_matrix[10]);
+
+					sz = (	px * world_uploaded_matrix[2]
+					+ 		py * world_uploaded_matrix[5]
+					+ 		pz * world_uploaded_matrix[8]
+					+            world_uploaded_matrix[11]);
+					
+					//swap temp variables
+					px = sx;
+					py = sy;
+					pz = sz;
 
 					if(file > 0)
 					{
@@ -543,6 +582,10 @@ void ExecuteCommand(int command,int argument)
 						vertex.x = px;
 						vertex.y = py;
 						vertex.z = pz;
+						
+						//char text[100];
+						//sprintf(text,"V: %f %f %f %f %f\n",tu,tv,px,py,pz);
+						//debuglog(text);
 						
 						sceIoWrite(file, &vertex, sizeof(TexVertex));
 					}
@@ -756,6 +799,7 @@ void ExecuteCommand(int command,int argument)
 		case 0x2A:
 		{
 			boneMatrixIndex = argument;
+			
 		}
 		break;
 
@@ -775,10 +819,55 @@ void ExecuteCommand(int command,int argument)
 		}
 		break;
 		
+		case 0x3A://       MDL     Model Matrix Select
+		{
+			world_uploaded_index = argument;
+			
+			//model_upload_x = argument % 3;
+			//model_upload_y = argument / 3;
+		}
+		break;
+
+		case  0x3B:// MODEL       Model Matrix Upload
+		{
+			argif = argument << 8;
+			memcpy(&fargument,&argif,4);
+			
+			
+			if (world_uploaded_index >= world_uploaded_maxIndex)
+			{
+
+            } else 
+			{
+	            world_uploaded_matrix[world_uploaded_index] = fargument;
+				world_uploaded_index++;
+            }
+			
+			
+			/*if (model_upload_y < 4)
+			{
+				model_matrix[model_upload_x][model_upload_y] = fargument;
+				
+				char text[100];
+				sprintf(text,"mat[%d][%d]: %f\n",model_upload_x,model_upload_y,model_matrix[model_upload_x][model_upload_y]);
+				debuglog(text);
+				
+				model_upload_x++;
+				if(model_upload_x == 3)
+				{
+					model_upload_x = 0;
+					model_upload_y++;
+				}
+
+			}*/
+ 
+		}
+		break;
+		
 		
 		//texture stuff
 		//texture size
-		case 0xB8:
+		/*case 0xB8:
 		case 0xB7:
 		case 0xB9:
 		case 0xBA:
@@ -810,7 +899,7 @@ void ExecuteCommand(int command,int argument)
 			//sprintf(text,"Tex format: %d \n",texture_storage_mode);
 			//debuglog(text);
 		}
-		break;
+		break;*/
 		
 		default:
 		{
@@ -832,6 +921,13 @@ void RipData()
 		char text[70];
 		sprintf(text,"addres1: %x addres2: %x\n",currentDList_addr,currentDList_stall_addr);
 		debuglog(text);
+		
+		//
+		int i = 0;
+		for (i = 0; i < 12; i++) 
+		{
+			world_uploaded_matrixIndex[i] = (i % 3) + (i / 4) * 4;
+		}
 		
 		//open file
 		char modelFilename[50];
