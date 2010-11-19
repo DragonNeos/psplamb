@@ -347,45 +347,36 @@ void ExecuteCommand(int command,int argument)
 						{
 							case 1:
 							{
-								char c8 = 0;
+								char *pos = (char*)vertexAddres;
 								
-								memcpy(&c8,(unsigned char *)vertexAddres,1);
-								tu = (float)c8;
-								vertexAddres++;
+								tu = (float)pos[0] / 127.0f;
+								tv = (float)pos[1] / 127.0f;
 								
-								memcpy(&c8,(unsigned char *)vertexAddres,1);
-								tv = (float)c8;
-								vertexAddres++;
-								
-								tu/=127.0f;
-								tv/=127.0f;
+								vertexAddres+=2;
 							}
 							break;
 							case 2:
 							{
-								short s16 = 0;
 								vertexAddres = (vertexAddres + 1) & ~1;
 								
-								memcpy(&s16,(unsigned char *)vertexAddres,2);
-								tu = (float)s16;
-								vertexAddres+=2;
+								short *pos = (short*)vertexAddres;
 								
-								memcpy(&s16,(unsigned char *)vertexAddres,2);
-								tv = (float)s16;
-								vertexAddres+=2;
+								tu = (float)pos[0] / 32767.0f;
+								tv = (float)pos[1] / 32767.0f;
 								
-								tu/=32767.0f;
-								tv/=32767.0f;
+								vertexAddres+=4;
 							}
 							break;
 							case 3:
 							{
 								vertexAddres = (vertexAddres + 3) & ~3;
 								
-								memcpy(&tu,(unsigned char *)vertexAddres,4);
-								vertexAddres+=4;
-								memcpy(&tv,(unsigned char *)vertexAddres,4);
-								vertexAddres+=4;
+								float *pos = (float*)vertexAddres;
+								
+								tu = pos[0];
+								tv = pos[1];
+								
+								vertexAddres+=8;
 							}
 							break;
 						}
@@ -452,50 +443,27 @@ void ExecuteCommand(int command,int argument)
 						{
 							case 1:
 							{
-								char c8 = 0;
-								unsigned char uc8 = 0;
+								char *pos = (char*)vertexAddres;
 								
-								// X and Y are signed 8 bit, Z is unsigned 8 bit
-								memcpy(&c8,(unsigned char *)vertexAddres,1);
-								px = (float)c8;
-								vertexAddres++;
+								px = (float)pos[0] / 127.0f;
+								py = (float)pos[1] / 127.0f;
+								pz = (float)pos[2] / 127.0f;
 								
-								memcpy(&c8,(unsigned char *)vertexAddres,1);
-								py = (float)c8;
-								vertexAddres++;
-								
-								memcpy(&uc8,(unsigned char *)vertexAddres,1);
-								pz = (float)uc8;
-								vertexAddres++;
-								
-								px /= 127.0f;
-								py /= 127.0f;
-								pz /= 127.0f;
+								vertexAddres+=3;
 							}
 							break;
 							
 							case 2:
 							{
-								short s16 = 0;
-								//vertexAddres = (vertexAddres + 1) & ~1;
+								vertexAddres = (vertexAddres + 1) & ~1;
+								
+								short *pos = (short*)vertexAddres;
+								
+								px = (float)pos[0] / 32767.0f;
+								py = (float)pos[1] / 32767.0f;
+								pz = (float)pos[2] / 32767.0f;
 
-								// X and Y are signed 16 bit, Z is unsigned 16 bit
-								memcpy(&s16,(unsigned char *)vertexAddres,2);
-								px = (float)s16;
-								vertexAddres+=2;
-								
-								memcpy(&s16,(unsigned char *)vertexAddres,2);
-								py = (float)s16;
-								vertexAddres+=2;
-								
-								memcpy(&s16,(unsigned char *)vertexAddres,2);
-								pz = (float)s16;
-								vertexAddres+=2;
-								
-								px /= 32767.0f;
-								py /= 32767.0f;
-								pz /= 32767.0f;
-
+								vertexAddres+=6;
 							}
 							break;
 							
@@ -503,18 +471,19 @@ void ExecuteCommand(int command,int argument)
 							{
 								vertexAddres = (vertexAddres + 3) & ~3;
 								
-								memcpy(&px,(unsigned char *)vertexAddres,4);
-								vertexAddres+=4;
-								memcpy(&py,(unsigned char *)vertexAddres,4);
-								vertexAddres+=4;
-								memcpy(&pz,(unsigned char *)vertexAddres,4);
-								vertexAddres+=4;
+								float *pos = (float*)vertexAddres;
+								
+								px = pos[0];
+								py = pos[1];
+								pz = pos[2];
+								
+								vertexAddres+=12;
 							}
 							break;
 						}
 						
 						//skinning
-						/*if (iweight != 0)
+						if (iweight != 0)
 						{
 							//temp values
 							float sx = 0, sy = 0, sz = 0;
@@ -545,10 +514,8 @@ void ExecuteCommand(int command,int argument)
 							px = sx;
 							py = sy;
 							pz = sz;							
-						}*/
-						
+						}
 					}
-					
 					
 					//translation
 					float sx = 0, sy = 0, sz = 0;
