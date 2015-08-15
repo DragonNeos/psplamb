@@ -1,0 +1,1 @@
+This plugin allow user to "rip" data that is send to the display list on psp. It read all info about models and save them as a .obj model file.
